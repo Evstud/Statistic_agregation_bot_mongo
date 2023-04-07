@@ -19,7 +19,7 @@ async def get_data_by_month(collection, dt_from, task_id):
             {"$match": {"dt": {"$gte": datetime.datetime.fromisoformat(dt_from),
                                "$lt": datetime.datetime.fromisoformat(dt_from) + relativedelta(months=1)}}},
             {"$group": {"_id": "$cust_id", "value": {"$sum": "$value"}}}
-        ], allowDiskUse=True).to_list(None)
+        ]).to_list(None)
         try:
             sum_sum_add = sum_sum[0]['value']
         except:
@@ -47,13 +47,23 @@ async def get_data_by_week(collection, dt_from, task_id):
     return {"sum_to_add": sum_sum_add, "task_id": task_id}
 
 
-async def get_data_by_day(collection, dt_from, task_id):
+async def get_data_by_day(collection, dt_from, dt_upto, task_id, ):
     try:
-        sum_sum = await collection.aggregate([
-            {"$match": {"dt": {"$gte": datetime.datetime.fromisoformat(dt_from),
-                               "$lt": datetime.datetime.fromisoformat(dt_from) + datetime.timedelta(days=1)}}},
-            {"$group": {"_id": "$cust_id", "value": {"$sum": "$value"}}}
-        ]).to_list(None)
+        timedel = datetime.datetime.fromisoformat(dt_upto) - datetime.datetime.fromisoformat(dt_from)
+        if timedel >= datetime.timedelta(days=1):
+            sum_sum = await collection.aggregate([
+                {"$match": {"dt": {"$gte": datetime.datetime.fromisoformat(dt_from),
+                                   "$lt": datetime.datetime.fromisoformat(dt_from) + datetime.timedelta(days=1)}}},
+                {"$group": {"_id": "$cust_id", "value": {"$sum": "$value"}}}
+            ]).to_list(None)
+        elif timedel < datetime.timedelta(days=1):
+            sum_sum = await collection.aggregate([
+                {"$match": {"dt": {"$gte": datetime.datetime.fromisoformat(dt_from),
+                                   "$lt": datetime.datetime.fromisoformat(dt_from) + timedel}}},
+                {"$group": {"_id": "$cust_id", "value": {"$sum": "$value"}}}
+            ]).to_list(None)
+        else:
+            sum_sum = 0
         try:
             sum_sum_add = sum_sum[0]['value']
         except:
@@ -64,13 +74,24 @@ async def get_data_by_day(collection, dt_from, task_id):
     return {"sum_to_add": sum_sum_add, "task_id": task_id}
 
 
-async def get_data_by_hour(collection, dt_from, task_id):
+async def get_data_by_hour(collection, dt_from, dt_upto, task_id):
     try:
-        sum_sum = await collection.aggregate([
-            {"$match": {"dt": {"$gte": datetime.datetime.fromisoformat(dt_from),
-                               "$lt": datetime.datetime.fromisoformat(dt_from) + datetime.timedelta(hours=1)}}},
-            {"$group": {"_id": "$cust_id", "value": {"$sum": "$value"}}}
-        ]).to_list(None)
+        timedel = datetime.datetime.fromisoformat(dt_upto) - datetime.datetime.fromisoformat(dt_from)
+        print(timedel)
+        if timedel >= datetime.timedelta(hours=1):
+            sum_sum = await collection.aggregate([
+                {"$match": {"dt": {"$gte": datetime.datetime.fromisoformat(dt_from),
+                                   "$lt": datetime.datetime.fromisoformat(dt_from) + datetime.timedelta(hours=1)}}},
+                {"$group": {"_id": "$cust_id", "value": {"$sum": "$value"}}}
+            ]).to_list(None)
+        elif timedel < datetime.timedelta(hours=1):
+            sum_sum = await collection.aggregate([
+                {"$match": {"dt": {"$gte": datetime.datetime.fromisoformat(dt_from),
+                                   "$lt": datetime.datetime.fromisoformat(dt_from) + timedel}}},
+                {"$group": {"_id": "$cust_id", "value": {"$sum": "$value"}}}
+            ]).to_list(None)
+        else:
+            sum_sum = 0
         try:
             sum_sum_add = sum_sum[0]['value']
         except:
@@ -104,7 +125,8 @@ async def get_data(collection, dt_from, dt_upto, group_type):
             dt_from = str((datetime.datetime.fromisoformat(dt_from) + relativedelta(weeks=1)))
         elif group_type == "day":
             t_id += 1
-            tasks.append(asyncio.create_task(get_data_by_day(collection=collection, dt_from=dt_from, task_id=t_id)))
+            tasks.append(asyncio.create_task(get_data_by_day(collection=collection, dt_from=dt_from,
+                                                             dt_upto=dt_upto, task_id=t_id)))
             labels.append(datetime.datetime.isoformat(
                 datetime.datetime(datetime.datetime.fromisoformat(dt_from).year,
                                   datetime.datetime.fromisoformat(dt_from).month,
@@ -112,7 +134,8 @@ async def get_data(collection, dt_from, dt_upto, group_type):
             dt_from = str((datetime.datetime.fromisoformat(dt_from) + datetime.timedelta(days=1)))
         elif group_type == "hour":
             t_id += 1
-            tasks.append(asyncio.create_task(get_data_by_hour(collection=collection, dt_from=dt_from, task_id=t_id)))
+            tasks.append(asyncio.create_task(get_data_by_hour(collection=collection, dt_from=dt_from,
+                                                              dt_upto=dt_upto, task_id=t_id)))
             labels.append(datetime.datetime.isoformat(
                 datetime.datetime(datetime.datetime.fromisoformat(dt_from).year,
                                   datetime.datetime.fromisoformat(dt_from).month,
@@ -125,9 +148,6 @@ async def get_data(collection, dt_from, dt_upto, group_type):
     dataset_val = []
     for da in dataset:
         dataset_val.append(da["sum_to_add"])
-    if group_type == "hour":
-        del dataset_val[-1]
-        dataset_val.append(0)
     return {"dataset": dataset_val, "labels": labels}
 
 

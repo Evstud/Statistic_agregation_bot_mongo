@@ -47,7 +47,7 @@ async def handle_message(message: types.Message):
                                 dt_from=dt_from,
                                 dt_upto=dt_upto
                             )
-                            await message.reply(msg_to_return)
+                            await message.reply(json.dumps(msg_to_return))
                         except Exception as main_ex:
                             print(f"Something is wrong: {main_ex}")
                 else:

@@ -17,7 +17,7 @@ async def get_data_by_month(collection, dt_from, task_id):
     try:
         sum_sum = await collection.aggregate([
             {"$match": {"dt": {"$gte": datetime.datetime.fromisoformat(dt_from),
-                               "$lte": datetime.datetime.fromisoformat(dt_from) + relativedelta(months=1)}}},
+                               "$lt": datetime.datetime.fromisoformat(dt_from) + relativedelta(months=1)}}},
             {"$group": {"_id": "$cust_id", "value": {"$sum": "$value"}}}
         ], allowDiskUse=True).to_list(None)
         try:
